@@ -5,9 +5,9 @@ namespace SportsResultsNotifier;
 
 public static class WebScraper
 {
-    private const string _siteUrl = "https://www.basketball-reference.com/boxscores/?month=5&day=21&year=2025";
+    private static string _siteUrl = $"https://www.basketball-reference.com/boxscores/?month={DateTime.Now.Month}&day={DateTime.Now.Day}&year={DateTime.Now.Year}";
 
-    public async static Task<List<GameData>> FetchSportsDataAsync()
+    public async static Task<List<GameData>?> FetchSportsDataAsync()
     {
         HtmlWeb web = new HtmlWeb();
         HtmlDocument doc = await web.LoadFromWebAsync(_siteUrl);
@@ -15,10 +15,15 @@ public static class WebScraper
         return GetGameResults(doc);
     }
 
-    private static List<GameData> GetGameResults(HtmlDocument doc)
+    private static List<GameData>? GetGameResults(HtmlDocument doc)
     {
+        if(doc.DocumentNode.SelectSingleNode("//*[@id=\"content\"]/div[2]/div[1]/p").InnerText.Equals("No games played on this date."))
+        {
+            return null;
+        }
+
         var gameResults = new List<GameData>();
-        var gameSchedule = doc.DocumentNode.SelectNodes("//*[@id=\"content\"]/div[3]/div");
+        var gameSchedule = doc.DocumentNode.SelectNodes("//*[@id=\"content\"]/div[3]/div"); ////*[@id="content"]/div[2]/div[1]/p/strong
 
         foreach (var item in gameSchedule)
         {
