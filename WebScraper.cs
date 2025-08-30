@@ -1,87 +1,94 @@
 ﻿using HtmlAgilityPack;
+using SportsResultsNotifier.Model;
 
 namespace SportsResultsNotifier;
 
 public static class WebScraper
 {
-    private const string _teamDataSiteUrl = "https://www.baseball-reference.com/teams/TEX/2025.shtml";
+    private const string _siteUrl = "https://www.basketball-reference.com/boxscores/?month=3&day=22&year=2025";
 
-    public async static Task<List<string>> FetchSportsDataAsync()
+    public async static Task<List<GameData>> FetchSportsDataAsync()
     {
         HtmlWeb web = new HtmlWeb();
-        HtmlDocument doc = await web.LoadFromWebAsync(_teamDataSiteUrl);
+        HtmlDocument doc = await web.LoadFromWebAsync(_siteUrl);
 
-        var sportsInfo = GetUpcomingGames(doc);
-        sportsInfo.Add(GetCurrentRecord(doc));
-        sportsInfo.Add(GetPlayoffOdds(doc));
-        sportsInfo.AddRange(GetTop5Batters(doc));
-        sportsInfo.AddRange(GetTop5Pitchers(doc));
-
-        return sportsInfo;
+        return GetGameResults(doc);
     }
 
-    private static List<string> GetUpcomingGames(HtmlDocument doc)
+    private static List<GameData> GetGameResults(HtmlDocument doc)
     {
-        List<string> result = new List<string>();
+        var gameResults = new List<GameData>();
         var gameSchedule = doc.DocumentNode.SelectNodes("//*[@id=\"content\"]/div[3]/div");
 
         foreach (var item in gameSchedule)
         {
-            var newStr = item.SelectSingleNode("table/tbody/tr[1]").InnerText + ": "
-            + item.SelectSingleNode("table/tbody/tr[2]/td[1]").InnerText.Trim() + " "
-            + item.SelectSingleNode("table/tbody/tr[3]/td[1]").InnerText.Trim() + " "
-            + item.SelectSingleNode("table/tbody/tr[3]/td[3]").InnerText.Trim();
+            var teams = ExtractTeamData(item);
+            var winningTeam = teams[0].TotalScore > teams[1].TotalScore ? teams[0] : teams[1];
+            var additionalStats = ExtractAdditionalGameData(item);
 
-            result.Add(newStr);
+            gameResults.Add(new()
+            {
+                TeamData = teams,
+                WinningTeam = winningTeam,
+                PtsStat = additionalStats[0],
+                TrbStat = additionalStats[1]
+            });
         }
 
-        return result;
+        return gameResults;
     }
 
-    private static string GetPlayoffOdds(HtmlDocument doc)
+    private static List<TeamData> ExtractTeamData(HtmlNode item)
     {
-        return TextFormatting.CleanRawText(doc.DocumentNode.SelectSingleNode("//*[@id=\"meta\"]/div[2]/p[2]").InnerText).Trim();
+        var teams = new List<TeamData>();
+
+        TeamData awayTeam = new TeamData()
+        {
+            Name = item.SelectSingleNode("table[1]/tbody/tr[1]/td[1]").InnerText,
+            TotalScore = Int32.Parse(item.SelectSingleNode("table[1]/tbody/tr[1]/td[2]").InnerText)
+        };
+        var quarterPerformance = item.SelectNodes("table[2]/tbody/tr[1]/td");
+        foreach (var quarter in quarterPerformance)
+        {
+            if (Int32.TryParse(quarter.InnerText, out int points))
+            {
+                awayTeam.ScoreByQuarter.Add(points);
+            }
+        }
+
+        TeamData homeTeam = new TeamData()
+        {
+            Name = item.SelectSingleNode("table[1]/tbody/tr[2]/td[1]").InnerText,
+            TotalScore = Int32.Parse(item.SelectSingleNode("table[1]/tbody/tr[2]/td[2]").InnerText)
+        };
+        quarterPerformance = item.SelectNodes("table[2]/tbody/tr[2]/td");
+        foreach (var quarter in quarterPerformance)
+        {
+            if (Int32.TryParse(quarter.InnerText, out int points))
+            {
+                homeTeam.ScoreByQuarter.Add(points);
+            }
+        }
+
+        teams.Add(awayTeam);
+        teams.Add(homeTeam);
+
+        return teams;
     }
 
-    private static string GetCurrentRecord(HtmlDocument doc)
+    private static List<string> ExtractAdditionalGameData(HtmlNode item)
     {
-        var currentRecord = doc.DocumentNode.SelectSingleNode("//*[@id=\"meta\"]/div[2]/p[1]").ChildNodes;
-        var recordStr = TextFormatting.CleanRawText(currentRecord[1].InnerText)
-            + " " + TextFormatting.CleanRawText(currentRecord[2].InnerText)
-            + TextFormatting.CleanRawText(currentRecord[3].InnerText).Replace("_", " ");
+        var data = new List<string>();
+
+        var PtsStat = item.SelectSingleNode("table[3]/tbody/tr[1]/td[2]").InnerText 
+            + " (" + item.SelectSingleNode("table[3]/tbody/tr[1]/td[3]").InnerText + ")";
         
-        return recordStr;
-    }
+        var TrbStat = item.SelectSingleNode("table[3]/tbody/tr[2]/td[2]").InnerText 
+            + " (" + item.SelectSingleNode("table[3]/tbody/tr[2]/td[3]").InnerText + ")";
 
-    private static List<string> GetTop5Batters(HtmlDocument doc)
-    {
-        var topBatters = new List<string>();
+        data.Add(PtsStat);
+        data.Add(TrbStat);
 
-        var tableHeaders = doc.DocumentNode.SelectSingleNode("//*[@id=\"players_standard_batting\"]/thead/tr").InnerText.Trim();
-        topBatters.Add(tableHeaders);
-
-        for (int i = 1; i < 6; i++)
-        {
-            var row = doc.DocumentNode.SelectSingleNode($"//*[@id=\"players_standard_batting\"]/tbody/tr[{i}]").InnerText.Trim();
-            topBatters.Add(row);
-        }
-
-        return topBatters;
-    }
-
-    private static List<string> GetTop5Pitchers(HtmlDocument doc)
-    {
-        var topBatters = new List<string>();
-
-        var tableHeaders = doc.DocumentNode.SelectSingleNode("//*[@id=\"players_standard_pitching\"]/thead/tr").InnerText.Trim();
-        topBatters.Add(tableHeaders);
-
-        for (int i = 1; i < 6; i++)
-        {
-            var row = doc.DocumentNode.SelectSingleNode($"//*[@id=\"players_standard_pitching\"]/tbody/tr[{i}]").InnerText.Trim();
-            topBatters.Add(row);
-        }
-
-        return topBatters;
+        return data;
     }
 }

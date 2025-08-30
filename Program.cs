@@ -9,5 +9,7 @@ var results = await WebScraper.FetchSportsDataAsync();
 
 foreach (var result in results)
 {
-    Console.WriteLine(result);
+    Console.WriteLine(result + "\n");
+    Console.WriteLine(result.TeamData[0].ToString() + "\n");
+    Console.WriteLine(result.TeamData[1].ToString() + "\n");
 }
