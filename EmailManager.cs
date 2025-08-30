@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using HtmlAgilityPack;
+using System.Net;
 using System.Net.Mail;
 
 namespace SportsResultsNotifier;
@@ -9,9 +10,13 @@ public static class EmailManager
     static string _smtpAddress = "127.0.0.1";
     static int _portNumber = 25;
     static bool _enableSsl = false;
-    static string _emailFromAddress = "No-Reply@RangersSportsReport.com";
+    static string _emailFromAddress = "No-Reply@NbaResults.com";
     static string _password = "abcde1234";
     static string _destinationAddress = "smtp@none.com";
+
+    //Email Template
+    static string _templatePath = @"template.html";
+    static string _placeholderValue = "#GAMEDATA_INSERT#";
 
     public static void SendEmail(EmailData emailData)
     {
@@ -21,7 +26,7 @@ public static class EmailManager
             mail.To.Add(_destinationAddress);
 
             mail.Subject = emailData.Subject;
-            mail.Body = emailData.Body;
+            mail.Body = FillInEmailTemplate(emailData.Body);
             mail.IsBodyHtml = true;
 
             using (SmtpClient smtp = new(_smtpAddress, _portNumber))
@@ -31,5 +36,13 @@ public static class EmailManager
                 smtp.Send(mail);
             }
         }
+    }
+
+    private static string FillInEmailTemplate(string body)
+    {
+        var doc = new HtmlDocument();
+        doc.Load(_templatePath);
+
+        return doc.DocumentNode.InnerText.Replace(_placeholderValue, body);
     }
 }
