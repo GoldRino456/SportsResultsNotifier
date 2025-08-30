@@ -5,7 +5,7 @@ namespace SportsResultsNotifier;
 
 public static class WebScraper
 {
-    private const string _siteUrl = "https://www.basketball-reference.com/boxscores/?month=3&day=22&year=2025";
+    private const string _siteUrl = "https://www.basketball-reference.com/boxscores/?month=5&day=21&year=2025";
 
     public async static Task<List<GameData>> FetchSportsDataAsync()
     {

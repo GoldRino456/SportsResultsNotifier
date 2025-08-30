@@ -1,4 +1,4 @@
-﻿namespace SportsResultsNotifier;
+﻿namespace SportsResultsNotifier.Model;
 
 public class EmailData
 {

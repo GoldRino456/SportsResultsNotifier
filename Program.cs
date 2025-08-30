@@ -1,14 +1,18 @@
-﻿using SportsResultsNotifier;
+﻿using App.WindowsService;
+using Microsoft.Extensions.Logging.Configuration;
+using Microsoft.Extensions.Logging.EventLog;
 
-var results = await WebScraper.FetchSportsDataAsync();
-var body = String.Empty;
-
-foreach (var result in results)
+HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddWindowsService(options =>
 {
-    body += result + "\n";
-    body += result.TeamData[0].ToString() + "\n";
-    body += result.TeamData[1].ToString() + "\n";
-}
+    options.ServiceName = "Sports Results Notification Service";
+});
 
-var email = new EmailData() { Body = $"<b>{body}</b>", Subject = $"Your Daily NBA Breakdown is here! - {DateTime.Now.Date}" };
-EmailManager.SendEmail(email);
+LoggerProviderOptions.RegisterProviderOptions<
+    EventLogSettings, EventLogLoggerProvider>(builder.Services);
+
+builder.Services.AddSingleton<SportsResultsNotificationService>();
+builder.Services.AddHostedService<WindowsBackgroundService>();
+
+IHost host = builder.Build();
+host.Run();
